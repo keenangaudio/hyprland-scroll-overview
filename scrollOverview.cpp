@@ -5361,7 +5361,7 @@ void CScrollOverview::onPreRender() {
         const float settle = 1.F - t;
         const float zoom = std::max((1.F - feedbackStartScale) * settle, feedbackMode == "zoom" ? feedbackAmount * pulse : 0.F);
         scale->setValueAndWarp(1.F - zoom);
-        feedbackNudge = feedbackStartNudge * settle + (feedbackMode == "nudge" ? feedbackDirection * feedbackAmount * axisSize(pMonitor->m_size, layout) * pulse : 0.F);
+        feedbackNudge = feedbackStartNudge * settle - (feedbackMode == "nudge" ? feedbackDirection * feedbackAmount * axisSize(pMonitor->m_size, layout) * pulse : 0.F);
         const float travel = 0.5F - 0.5F * std::cos(t * std::numbers::pi_v<float>);
         workspaceInsertProgress->setValueAndWarp(travel);
         pMonitor->m_solitaryClient.reset();

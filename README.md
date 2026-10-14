@@ -185,3 +185,8 @@ rounded crest. It slows almost to rest around the maximum without a flat
 plateau, then falls back over a longer portion of the animation. Quintic
 easing gives zero velocity and acceleration at departure and finish. The
 configured displacement and total duration are unchanged.
+
+The foreground nudge now moves opposite to the logical workspace reorder,
+as though dragged by the background workspace passing beneath it: an upward
+swap nudges the foreground down, and a downward swap nudges it up. Amount,
+rounded-crest easing, duration and background travel are unchanged.
