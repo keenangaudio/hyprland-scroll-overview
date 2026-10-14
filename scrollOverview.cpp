@@ -5351,9 +5351,10 @@ void CScrollOverview::onPreRender() {
             return;
         }
         const float t = feedbackProgress ? std::clamp(feedbackProgress->value(), 0.F, 1.F) : 1.F;
-        // Cosine ease-in-out on each half: zero velocity at departure,
-        // maximum displacement, and return. A sine pulse starts abruptly.
-        const float pulse = 0.5F - 0.5F * std::cos(2.F * t * std::numbers::pi_v<float>);
+        // Ease out for 30%, linger at the peak for 30%, then return over
+        // the final 40%. Background cards keep travelling during the dwell.
+        const auto ease = [](float phase) { return 0.5F - 0.5F * std::cos(phase * std::numbers::pi_v<float>); };
+        const float pulse = t < 0.3F ? ease(t / 0.3F) : t <= 0.6F ? 1.F : 1.F - ease((t - 0.6F) / 0.4F);
         const float settle = 1.F - t;
         const float zoom = std::max((1.F - feedbackStartScale) * settle, feedbackMode == "zoom" ? feedbackAmount * pulse : 0.F);
         scale->setValueAndWarp(1.F - zoom);

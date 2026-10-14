@@ -173,3 +173,9 @@ Swap feedback uses cosine ease-in-out: the foreground nudge/zoom has zero
 velocity at departure, its turning point, and return; passing background cards
 ease into and out of their travel. Both halves keep the configured duration
 and maximum displacement.
+
+The foreground now uses 30% of its time to move out, holds at maximum
+displacement for 30%, and returns over the final 40%. Each moving segment
+uses cosine ease-in-out with zero velocity at its ends. Background cards
+continue passing underneath during the hold. At 280 ms this is 84 ms out,
+84 ms held, and 112 ms back.
