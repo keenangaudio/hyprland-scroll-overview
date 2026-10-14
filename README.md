@@ -110,3 +110,15 @@ The complete documentation is available in the [ScrollOverview wiki](https://git
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=yayuuu/hyprland-scroll-overview&type=date&legend=top-left&sealed_token=dnoTQqdWontVtW1U-Qv5yJAQVYpafoKJ0ytKAwVNsCxYO8lor7ZbsD4oVIRHBW_9LjjRPMV-wHAXTw70cn4SbI_2OIrdFEMbOyjv9GVHi9EOBFIgwzKwvMTGWBhkYg5q1f9oV6mQqQZFgec__fA790Nj_OS5WOyVjeHFwceIJRFBlgSvBWyGMn3WUqym" />
  </picture>
 </a>
+
+## Workspace ID reordering on Hyprland 0.56
+
+Open overviews watch workspace ID changes, re-sort their cards and animate them
+with the existing workspace movement animation. Repeated swaps start from the
+current displayed positions. Selection stays with the workspace/window object.
+
+ID changes in one Lua callback are coalesced at Wayland idle, so temporary swap
+IDs are never presented to consumers. For Quickshell versions that do not handle
+`changeworkspaceid`, the plugin sends one `configreloaded` IPC notification to
+refresh their existing monitor/workspace/toplevel models. This does not reload
+Hyprland's config or change the bar widget. It also works with the overview closed.

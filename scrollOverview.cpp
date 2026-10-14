@@ -1911,6 +1911,7 @@ void CScrollOverview::rebuildWorkspaceImages() {
             continue;
 
         images.emplace_back(makeShared<SWorkspaceImage>(WORKSPACE));
+        images.back()->idAtBuild = WORKSPACE->m_id;
     }
 
     std::sort(images.begin(), images.end(), [](const auto& a, const auto& b) { return a->pWorkspace->m_id < b->pWorkspace->m_id; });
@@ -5197,6 +5198,53 @@ void CScrollOverview::reopen() {
     activateSubmapIfConfigured();
     emitFullscreenVisibilityState(Desktop::focusState()->window(), true);
     *scale = ScrollOverview::Config::getScale(pMonitor.lock());
+    damage();
+}
+
+void CScrollOverview::onWorkspaceIDsChanged() {
+    if (closing || !pMonitor || std::ranges::none_of(images, [](const auto& image) {
+        return image && image->pWorkspace && image->idAtBuild != image->pWorkspace->m_id;
+    }))
+        return;
+
+    // Capture the displayed positions before sorting. IDs have already changed,
+    // so use the image's previous ID to sample an in-flight reorder animation.
+    std::unordered_map<WORKSPACEID, float> previousOffsets;
+    const auto pitch = getWorkspaceLogicalPitch(pMonitor.lock(), scale->value(), layout);
+    const auto active = activeWorkspaceIndex();
+    const auto translation = layout == ScrollOverview::Config::ELayout::HORIZONTAL ? viewOffset->value().x : viewOffset->value().y;
+    for (size_t i = 0; i < images.size(); ++i) {
+        const auto& image = images[i];
+        float offset = workspaceOverviewLogicalOffset(i, active, pitch);
+        const auto old = workspaceInsertTransition.oldRelativeOffsets.find(image->idAtBuild);
+        const auto next = workspaceInsertTransition.newRelativeOffsets.find(image->idAtBuild);
+        if (workspaceInsertTransition.active && old != workspaceInsertTransition.oldRelativeOffsets.end() && next != workspaceInsertTransition.newRelativeOffsets.end())
+            offset = old->second + (next->second - old->second) * std::clamp(workspaceInsertProgress->value(), 0.F, 1.F);
+        previousOffsets[image->pWorkspace->m_id] = offset + translation;
+    }
+
+    auto previous = std::move(rememberedSelection);
+    rememberedSelection.clear();
+    for (const auto& [id, ref] : previous) {
+        const auto window = ref.lock();
+        if (window && window->m_workspace)
+            rememberedSelection[window->m_workspace->m_id] = window;
+    }
+    rebuildPending = false;
+    markBlurDirty();
+    redrawAll();
+    workspaceInsertTransition = {};
+    workspaceInsertTransition.active = true;
+    workspaceInsertTransition.oldRelativeOffsets = std::move(previousOffsets);
+    const auto newActive = activeWorkspaceIndex();
+    const auto newPitch = getWorkspaceLogicalPitch(pMonitor.lock(), scale->value(), layout);
+    for (size_t i = 0; i < images.size(); ++i)
+        workspaceInsertTransition.newRelativeOffsets[images[i]->pWorkspace->m_id] = workspaceOverviewLogicalOffset(i, newActive, newPitch);
+    workspaceInsertFadeProgress->setValueAndWarp(1.F);
+    workspaceInsertProgress->setValueAndWarp(0.F);
+    *workspaceInsertProgress = 1.F;
+    viewOffset->setValueAndWarp(Vector2D{});
+    syncSelectionToViewport();
     damage();
 }
 

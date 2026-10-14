@@ -39,6 +39,7 @@ class CScrollOverview : public IOverview {
     bool         shouldAllowRealtimePreviewSchedule() override;
     bool         shouldSuppressRenderDamage() const override;
     void         onPreRender() override;
+    void         onWorkspaceIDsChanged();
 
     void         setClosing(bool closing) override;
 
@@ -60,7 +61,10 @@ class CScrollOverview : public IOverview {
 
 #if defined(SCROLLOVERVIEW_TESTING)
     std::string testStatus() const {
-        return std::format("closing={} applied={} pending={} scale={} goal={} anim={}", closing, closeApplied, closeRemovalPending, scale->value(), scale->goal(), scale->isBeingAnimated());
+        std::string ids;
+        for (const auto& image : images)
+            ids += std::format("{}:{},", image->idAtBuild, image->pWorkspace->m_id);
+        return std::format("closing={} applied={} pending={} scale={} goal={} anim={} workspaces={} reorder={} progress={}", closing, closeApplied, closeRemovalPending, scale->value(), scale->goal(), scale->isBeingAnimated(), ids, workspaceInsertProgress->isBeingAnimated(), workspaceInsertProgress->value());
     }
 #endif
   private:
@@ -190,6 +194,7 @@ class CScrollOverview : public IOverview {
 
     struct SWorkspaceImage {
         PHLWORKSPACE              pWorkspace;
+        WORKSPACEID               idAtBuild = WORKSPACE_INVALID;
         std::vector<PHLWINDOWREF> windows;
         float                     overflowLeft   = 0.F;
         float                     overflowRight  = 0.F;

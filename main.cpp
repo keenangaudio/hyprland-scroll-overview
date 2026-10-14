@@ -30,6 +30,7 @@ using namespace Hyprutils::String;
 #include "OverviewGesture.hpp"
 #include "GestureProbe.hpp"
 #include "OverviewOpen.hpp"
+#include "WorkspaceIDRefresh.hpp"
 
 // Methods
 static OverviewFunctionHook* g_pScrollRenderWorkspaceHook = nullptr;
@@ -687,6 +688,8 @@ static PLUGIN_DESCRIPTION_INFO initializePlugin(HANDLE handle) {
             overview->onPreRender();
     });
 
+    initializeWorkspaceIDRefresh();
+
     g_configReloadHook = Event::bus()->m_events.config.reloaded.listen([] { reconcileNativeDragHook(); });
 
     g_nativeDragMouseMoveHook = Event::bus()->m_events.input.mouse.move.listen([](Vector2D, Event::SCallbackInfo& info) {
@@ -713,13 +716,14 @@ static PLUGIN_DESCRIPTION_INFO initializePlugin(HANDLE handle) {
 
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     try { return initializePlugin(handle); }
-    catch (...) { clearOverviewFunctionHooks(); throw; }
+    catch (...) { stopWorkspaceIDRefresh(); clearOverviewFunctionHooks(); throw; }
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
     g_pHyprRenderer->m_renderPass.removeAllOfType("CScrollOverviewPassElement");
 
     g_unloading = true;
+    stopWorkspaceIDRefresh();
     g_nativeDragMouseMoveHook.reset();
     g_configReloadHook.reset();
     if (g_pScrollChangeWorkspaceHook)
