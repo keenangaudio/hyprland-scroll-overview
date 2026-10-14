@@ -1,5 +1,9 @@
 # ScrollOverview
 
+This fork's `arm64-native-gestures` branch adds a tested ARM64 hook backend and
+continuous vertical zoom gestures for Hyprland 0.56.2. See [ARM64 build and usage](docs/ARM64.md).
+The original upstream plugin and attribution are retained below.
+
 ScrollOverview is an overview plugin like niri.
 
 https://github.com/user-attachments/assets/e5eb1ad2-79bc-492a-82cd-02cd8b960d3e

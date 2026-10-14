@@ -386,6 +386,7 @@ void registerGesture(TGestureRegistrar gestureRegistrar, TGestureKeyword gesture
 
     g_gestureRegistrar = gestureRegistrar;
     HyprlandAPI::addLuaFunction(SCROLLOVERVIEW_HANDLE, "scrolloverview", "gesture", ::gestureLua);
+    HyprlandAPI::addLuaFunction(SCROLLOVERVIEW_HANDLE, "scrolloverview", "native_gesture", ::gestureLua);
 }
 
 static void registerLuaFunctions() {

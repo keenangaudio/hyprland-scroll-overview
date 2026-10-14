@@ -58,6 +58,11 @@ class CScrollOverview : public IOverview {
     void         fullRender() override;
     bool         adoptNativeWindowDrag(PHLWINDOW expectedWindow = {});
 
+#if defined(SCROLLOVERVIEW_TESTING)
+    std::string testStatus() const {
+        return std::format("closing={} applied={} pending={} scale={} goal={} anim={}", closing, closeApplied, closeRemovalPending, scale->value(), scale->goal(), scale->isBeingAnimated());
+    }
+#endif
   private:
     enum class ECloseMode {
         COMMIT_SELECTION,

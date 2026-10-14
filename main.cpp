@@ -23,22 +23,24 @@
 using namespace Hyprutils::String;
 
 #include "globals.hpp"
+#include "OverviewHooks.hpp"
 #include "Config.hpp"
 #include "PluginVersion.hpp"
 #include "scrollOverview.hpp"
 #include "OverviewGesture.hpp"
+#include "GestureProbe.hpp"
 #include "OverviewOpen.hpp"
 
 // Methods
-static CFunctionHook* g_pScrollRenderWorkspaceHook = nullptr;
-static CFunctionHook* g_pScrollAddDamageHookA      = nullptr;
-static CFunctionHook* g_pScrollAddDamageHookB      = nullptr;
-static CFunctionHook* g_pScrollDamageSurfaceHook   = nullptr;
-static CFunctionHook* g_pScrollScheduleFrameHook   = nullptr;
-static CFunctionHook* g_pScrollSendFrameEventsHook = nullptr;
-static CFunctionHook* g_pScrollSurfaceFrameHook    = nullptr;
-static CFunctionHook* g_pScrollMoveMouseHook       = nullptr;
-static CFunctionHook* g_pScrollChangeWorkspaceHook = nullptr;
+static OverviewFunctionHook* g_pScrollRenderWorkspaceHook = nullptr;
+static OverviewFunctionHook* g_pScrollAddDamageHookA      = nullptr;
+static OverviewFunctionHook* g_pScrollAddDamageHookB      = nullptr;
+static OverviewFunctionHook* g_pScrollDamageSurfaceHook   = nullptr;
+static OverviewFunctionHook* g_pScrollScheduleFrameHook   = nullptr;
+static OverviewFunctionHook* g_pScrollSendFrameEventsHook = nullptr;
+static OverviewFunctionHook* g_pScrollSurfaceFrameHook    = nullptr;
+static OverviewFunctionHook* g_pScrollMoveMouseHook       = nullptr;
+static OverviewFunctionHook* g_pScrollChangeWorkspaceHook = nullptr;
 typedef void (*origRenderWorkspace)(void*, PHLMONITOR, PHLWORKSPACE, const Time::steady_tp&, const CBox&);
 typedef void (*origAddDamageA)(void*, const CBox&);
 typedef void (*origAddDamageB)(void*, const pixman_region32_t*);
@@ -465,7 +467,7 @@ static void reconcileNativeDragHook() {
         if (!g_pScrollMoveMouseHook && !g_scrollMoveMouseHookUnavailable) {
             const auto ADDRESS = findOptionalFn("moveMouse", "CLayoutManager::moveMouse(");
             if (ADDRESS)
-                g_pScrollMoveMouseHook = HyprlandAPI::createFunctionHook(SCROLLOVERVIEW_HANDLE, ADDRESS, rc<void*>(hkMoveMouse));
+                g_pScrollMoveMouseHook = createOverviewFunctionHook(SCROLLOVERVIEW_HANDLE, ADDRESS, rc<void*>(hkMoveMouse));
 
             if (!g_pScrollMoveMouseHook)
                 g_scrollMoveMouseHookUnavailable = true;
@@ -531,8 +533,8 @@ static std::expected<void, std::string> applyOverviewGesture(size_t fingerCount,
     if (direction == TRACKPAD_GESTURE_DIR_NONE)
         return std::unexpected("Invalid direction");
 
-    if (action == "overview")
-        return g_pTrackpadGestures->addGesture(makeUnique<COverviewGesture>(), fingerCount, direction, modMask, deltaScale, disableInhibit);
+    if (action == "overview" || action == "overview_all" || action == "overview_close" || action == "overview_close_all")
+        return g_pTrackpadGestures->addGesture(makeUnique<COverviewGesture>(action.find("close") != std::string::npos, action.ends_with("all")), fingerCount, direction, modMask, deltaScale, disableInhibit);
 
     if (action == "unset")
         return g_pTrackpadGestures->removeGesture(fingerCount, direction, modMask, deltaScale, disableInhibit);
@@ -623,7 +625,7 @@ static Hyprlang::CParseResult overviewGestureKeyword(const char* LHS, const char
     return result;
 }
 
-APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
+static PLUGIN_DESCRIPTION_INFO initializePlugin(HANDLE handle) {
     SCROLLOVERVIEW_HANDLE = handle;
 
     const std::string HASH        = __hyprland_api_get_hash();
@@ -634,44 +636,44 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         throw std::runtime_error("[he] Version mismatch");
     }
 
-    g_pScrollRenderWorkspaceHook = HyprlandAPI::createFunctionHook(
+    g_pScrollRenderWorkspaceHook = createOverviewFunctionHook(
         SCROLLOVERVIEW_HANDLE,
         findFnOrThrow("renderWorkspace", {"CHyprRenderer::renderWorkspace(", "IHyprRenderer::renderWorkspace("}),
         rc<void*>(hkRenderWorkspace));
 
-    g_pScrollScheduleFrameHook = HyprlandAPI::createFunctionHook(
+    g_pScrollScheduleFrameHook = createOverviewFunctionHook(
         SCROLLOVERVIEW_HANDLE, 
         findFnOrThrow("_ZN7Monitor8CMonitor13scheduleFrameEN10Aquamarine7IOutput19scheduleFrameReasonE", {""}),
         rc<void*>(hkScheduleFrame));
 
-    g_pScrollDamageSurfaceHook = HyprlandAPI::createFunctionHook(
+    g_pScrollDamageSurfaceHook = createOverviewFunctionHook(
         SCROLLOVERVIEW_HANDLE,
         findFnOrThrow("damageSurface", {"CHyprRenderer::damageSurface(", "IHyprRenderer::damageSurface("}),
         rc<void*>(hkDamageSurface));
 
-    g_pScrollSendFrameEventsHook = HyprlandAPI::createFunctionHook(
+    g_pScrollSendFrameEventsHook = createOverviewFunctionHook(
         SCROLLOVERVIEW_HANDLE,
         findFnOrThrow("sendFrameEventsToWorkspace", {"CHyprRenderer::sendFrameEventsToWorkspace(", "IHyprRenderer::sendFrameEventsToWorkspace("}),
         rc<void*>(hkSendFrameEventsToWorkspace));
 
-    g_pScrollSurfaceFrameHook = HyprlandAPI::createFunctionHook(
+    g_pScrollSurfaceFrameHook = createOverviewFunctionHook(
         SCROLLOVERVIEW_HANDLE,
         findFnOrThrow("_ZN18CWLSurfaceResource5frameERKNSt6chrono10time_pointINS0_3_V212steady_clockENS0_8durationIlSt5ratioILl1ELl1000000000EEEEEE", {""}),
         rc<void*>(hkSurfaceFrame));
 
-    g_pScrollAddDamageHookB = HyprlandAPI::createFunctionHook(
+    g_pScrollAddDamageHookB = createOverviewFunctionHook(
         SCROLLOVERVIEW_HANDLE,
         findFnOrThrow("addDamageEPK15pixman_region32", {"CMonitor::addDamage"}),
         rc<void*>(hkAddDamageB));
 
-    g_pScrollAddDamageHookA = HyprlandAPI::createFunctionHook(
+    g_pScrollAddDamageHookA = createOverviewFunctionHook(
         SCROLLOVERVIEW_HANDLE,
         findFnOrThrow("_ZN7Monitor8CMonitor9addDamageERKN9Hyprutils4Math4CBoxE", {""}),
         rc<void*>(hkAddDamageA));
 
     // Keep this hook until plugin unload: finishing the last overview disables the
     // rendering hooks inside hkChangeWorkspace, which still needs its original function.
-    g_pScrollChangeWorkspaceHook = HyprlandAPI::createFunctionHook(
+    g_pScrollChangeWorkspaceHook = createOverviewFunctionHook(
         SCROLLOVERVIEW_HANDLE,
         findFnOrThrow("changeWorkspace", {"Config::Actions::changeWorkspace(Hyprutils::Memory::CSharedPointer<CWorkspace>"}),
         rc<void*>(hkChangeWorkspace));
@@ -703,9 +705,15 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     ScrollOverview::Config::registerDispatcher("navigate", ::onNavigateDispatcher);
     ScrollOverview::Config::registerDispatcher("window", ::onWindowDispatcher);
     ScrollOverview::Config::registerGesture(::onRegisterOverviewGesture, ::overviewGestureKeyword);
+    registerOverviewGestureProbe();
     ScrollOverview::Config::registerConfig();
 
     return {"scrolloverview", "A plugin for an overview", "Vaxry, yayuuu", SCROLLOVERVIEW_VERSION};
+}
+
+APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
+    try { return initializePlugin(handle); }
+    catch (...) { clearOverviewFunctionHooks(); throw; }
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
@@ -718,6 +726,7 @@ APICALL EXPORT void PLUGIN_EXIT() {
         g_pScrollChangeWorkspaceHook->unhook();
     clearScrollOverviews();
     disableScrollOverviewHooks();
+    clearOverviewFunctionHooks();
 
     if (g_pTrackpadGestures)
         g_pTrackpadGestures->clearGestures();
