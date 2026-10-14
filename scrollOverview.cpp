@@ -5351,12 +5351,15 @@ void CScrollOverview::onPreRender() {
             return;
         }
         const float t = feedbackProgress ? std::clamp(feedbackProgress->value(), 0.F, 1.F) : 1.F;
-        const float pulse = std::sin(t * std::numbers::pi_v<float>);
+        // Cosine ease-in-out on each half: zero velocity at departure,
+        // maximum displacement, and return. A sine pulse starts abruptly.
+        const float pulse = 0.5F - 0.5F * std::cos(2.F * t * std::numbers::pi_v<float>);
         const float settle = 1.F - t;
         const float zoom = std::max((1.F - feedbackStartScale) * settle, feedbackMode == "zoom" ? feedbackAmount * pulse : 0.F);
         scale->setValueAndWarp(1.F - zoom);
         feedbackNudge = feedbackStartNudge * settle + (feedbackMode == "nudge" ? feedbackDirection * feedbackAmount * axisSize(pMonitor->m_size, layout) * pulse : 0.F);
-        workspaceInsertProgress->setValueAndWarp(t * t * (3.F - 2.F * t));
+        const float travel = 0.5F - 0.5F * std::cos(t * std::numbers::pi_v<float>);
+        workspaceInsertProgress->setValueAndWarp(travel);
         pMonitor->m_solitaryClient.reset();
         return;
     }

@@ -137,8 +137,8 @@ Lua configuration example (inside `hl.config`):
 plugin = { scrolloverview = {
   workspace_gap = 100,
   swap_effect = "nudge",
-  swap_effect_up = "nudge",
-  swap_effect_down = "zoom",
+  swap_effect_up = "",
+  swap_effect_down = "",
   swap_nudge = 0.06,
   swap_zoom = 0.05,
   swap_duration = 280,
@@ -168,3 +168,8 @@ both modes, unchanged active workspace/window and input options, cleanup,
 repeated swaps, normal-workspace interruption, and full-overview takeover.
 Colored-window captures confirmed the foreground ordering in both swap
 directions.
+
+Swap feedback uses cosine ease-in-out: the foreground nudge/zoom has zero
+velocity at departure, its turning point, and return; passing background cards
+ease into and out of their travel. Both halves keep the configured duration
+and maximum displacement.
