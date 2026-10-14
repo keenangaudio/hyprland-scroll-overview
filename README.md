@@ -122,3 +122,49 @@ IDs are never presented to consumers. For Quickshell versions that do not handle
 `changeworkspaceid`, the plugin sends one `configreloaded` IPC notification to
 refresh their existing monitor/workspace/toplevel models. This does not reload
 Hyprland's config or change the bar widget. It also works with the overview closed.
+
+## Desktop workspace-swap feedback
+
+The existing plugin also provides short render-only swap effects, without
+opening an interactive overview or changing keyboard/mouse focus. There is
+one plugin to load. Full overview and feedback share `layout` and
+`workspace_gap`; the foreground/current card is rendered last in both views.
+Neighboring cards pass behind it, with off-screen cards culled by geometry.
+
+Lua configuration example (inside `hl.config`):
+
+```lua
+plugin = { scrolloverview = {
+  workspace_gap = 100,
+  swap_effect = "nudge",
+  swap_effect_up = "nudge",
+  swap_effect_down = "zoom",
+  swap_nudge = 0.06,
+  swap_zoom = 0.05,
+  swap_duration = 280,
+} }
+```
+
+`swap_effect` selects `nudge`, `zoom`, or `none`. Direction overrides default
+to the empty string, which inherits the default effect. Clear both overrides
+to use a single mode in both directions. Nudge is a fraction of the monitor's
+layout axis (0–0.25); zoom is the fractional scale reduction (0–0.4). Duration
+is in milliseconds (80–1000). Amount zero disables that effect.
+
+The zoom returns smoothly to scale 1, and the nudge returns to zero. A peek is
+part of the shared scene, not another effect or plugin. Its visible extent
+depends on the configured gap and amount. All intersecting neighboring cards
+are eligible to render, including further neighbors when the view reveals them.
+The top/overlay shell layers remain at their original scale and position.
+
+The feedback scene installs no input listeners or submap and restores its
+render-only visibility state when finished. Repeated swaps restart from the
+current visual state; opening a real overview replaces it. Normal workspace
+switches, workspace swipes and locking interrupt it. Animations-disabled,
+scratchpad, non-swap ID changes and swaps on other monitors do not start it.
+
+Validation on Hyprland 0.56.2 / ARM64: native build and isolated runs checked
+both modes, unchanged active workspace/window and input options, cleanup,
+repeated swaps, normal-workspace interruption, and full-overview takeover.
+Colored-window captures confirmed the foreground ordering in both swap
+directions.

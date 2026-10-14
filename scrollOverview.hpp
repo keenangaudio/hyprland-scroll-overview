@@ -25,7 +25,7 @@ struct wl_event_source;
 
 class CScrollOverview : public IOverview {
   public:
-    CScrollOverview(PHLWORKSPACE startedOn_, bool swipe = false, PHLMONITOR monitor = {});
+    CScrollOverview(PHLWORKSPACE startedOn_, bool swipe = false, PHLMONITOR monitor = {}, bool feedback = false);
     ~CScrollOverview() override;
 
     void         render() override;
@@ -40,6 +40,9 @@ class CScrollOverview : public IOverview {
     bool         shouldSuppressRenderDamage() const override;
     void         onPreRender() override;
     void         onWorkspaceIDsChanged();
+    bool         isSwapFeedback() const override { return feedbackOnly; }
+    void         startSwapFeedback(int direction, const std::unordered_map<WORKSPACEID, WORKSPACEID>& previousIDs);
+    void         finishSwapFeedback();
 
     void         setClosing(bool closing) override;
 
@@ -64,7 +67,7 @@ class CScrollOverview : public IOverview {
         std::string ids;
         for (const auto& image : images)
             ids += std::format("{}:{},", image->idAtBuild, image->pWorkspace->m_id);
-        return std::format("closing={} applied={} pending={} scale={} goal={} anim={} workspaces={} reorder={} progress={}", closing, closeApplied, closeRemovalPending, scale->value(), scale->goal(), scale->isBeingAnimated(), ids, workspaceInsertProgress->isBeingAnimated(), workspaceInsertProgress->value());
+        return std::format("closing={} applied={} pending={} scale={} goal={} anim={} workspaces={} reorder={} progress={} feedback={} mode={} nudge={}", closing, closeApplied, closeRemovalPending, scale->value(), scale->goal(), scale->isBeingAnimated(), ids, workspaceInsertProgress->isBeingAnimated(), workspaceInsertProgress->value(), feedbackOnly, feedbackMode, feedbackNudge);
     }
 #endif
   private:
@@ -328,6 +331,16 @@ class CScrollOverview : public IOverview {
     CHyprSignalListener                                dragKeyboardKeyHook;
     CHyprSignalListener             workspaceCreatedHook;
     CHyprSignalListener             workspaceRemovedHook;
+
+    bool                             feedbackOnly = false;
+    int                              feedbackDirection = 0;
+    std::string                      feedbackMode;
+    float                            feedbackAmount = 0.F;
+    float                            feedbackNudge = 0.F;
+    float                            feedbackStartScale = 1.F;
+    float                            feedbackStartNudge = 0.F;
+    PHLANIMVAR<float>                 feedbackProgress;
+    SP<Hyprutils::Animation::SAnimationPropertyConfig> feedbackConfig;
 
     bool                             swipe = false;
 

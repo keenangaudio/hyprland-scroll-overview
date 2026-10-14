@@ -16,6 +16,7 @@ void COverviewGesture::begin(const STrackpadGestureBegin& e) {
     const auto monitors = m_all ? State::monitorState()->monitors() : std::vector<PHLMONITOR>{monitor};
     for (const auto& target : monitors) {
         auto existing = scrollOverviewForMonitor(target);
+        if (m_closeOnly && existing && existing->isSwapFeedback()) { existing->close(); continue; }
         if (m_closeOnly && !existing) continue; // A downward gesture never opens.
         auto [overview, created] = openOverview(target, true);
         if (!overview) continue;

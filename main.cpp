@@ -75,6 +75,11 @@ static void disableNativeDragHook();
 static void reconcileNativeDragHook();
 
 static Config::Actions::ActionResult hkChangeWorkspace(PHLWORKSPACE workspace) {
+    if (workspace) {
+        const auto scene = scrollOverviewForMonitor(workspace->m_monitor.lock());
+        if (scene && scene->isSwapFeedback())
+            static_cast<CScrollOverview*>(scene.get())->finishSwapFeedback();
+    }
     if (workspace && !g_unloading) {
         const auto overviews = scrollOverviews();
         for (const auto& overview : overviews)
@@ -312,8 +317,11 @@ SOverviewOpenResult openOverview(PHLMONITOR monitor, bool swipe) {
     if (!monitor)
         return {};
 
-    if (const auto OVERVIEW = scrollOverviewForMonitor(monitor))
-        return {.overview = OVERVIEW, .created = false};
+    if (const auto OVERVIEW = scrollOverviewForMonitor(monitor)) {
+        if (!OVERVIEW->isSwapFeedback())
+            return {.overview = OVERVIEW, .created = false};
+        static_cast<CScrollOverview*>(OVERVIEW.get())->finishSwapFeedback();
+    }
 
     if (!ensureScrollOverviewHooks())
         return {};
@@ -369,7 +377,7 @@ static SDispatchResult onOverviewDispatcher(std::string arg) {
     if (MONITORS.empty())
         return {.success = false, .error = TARGET.empty() ? "no active monitor" : "monitor not found: " + TARGET};
 
-    const bool ALL_OPEN = std::ranges::all_of(MONITORS, [](const auto& monitor) { return !!scrollOverviewForMonitor(monitor); });
+    const bool ALL_OPEN = std::ranges::all_of(MONITORS, [](const auto& monitor) { const auto overview = scrollOverviewForMonitor(monitor); return overview && !overview->isSwapFeedback(); });
     if (ACTION == "toggle" && ALL_OPEN) {
         for (const auto& monitor : MONITORS) {
             if (const auto overview = scrollOverviewForMonitor(monitor)) {
@@ -693,7 +701,7 @@ static PLUGIN_DESCRIPTION_INFO initializePlugin(HANDLE handle) {
     g_configReloadHook = Event::bus()->m_events.config.reloaded.listen([] { reconcileNativeDragHook(); });
 
     g_nativeDragMouseMoveHook = Event::bus()->m_events.input.mouse.move.listen([](Vector2D, Event::SCallbackInfo& info) {
-        if (info.cancelled || g_unloading || scrollOverviews().empty())
+        if (info.cancelled || g_unloading || scrollOverviews().empty() || std::ranges::all_of(scrollOverviews(), [](const auto& overview) { return overview->isSwapFeedback(); }))
             return;
 
         try {
