@@ -179,3 +179,9 @@ displacement for 30%, and returns over the final 40%. Each moving segment
 uses cosine ease-in-out with zero velocity at its ends. Background cards
 continue passing underneath during the hold. At 280 ms this is 84 ms out,
 84 ms held, and 112 ms back.
+
+The latest feedback envelope replaces the timed hold with one continuous
+rounded crest. It slows almost to rest around the maximum without a flat
+plateau, then falls back over a longer portion of the animation. Quintic
+easing gives zero velocity and acceleration at departure and finish. The
+configured displacement and total duration are unchanged.

@@ -5351,10 +5351,13 @@ void CScrollOverview::onPreRender() {
             return;
         }
         const float t = feedbackProgress ? std::clamp(feedbackProgress->value(), 0.F, 1.F) : 1.F;
-        // Ease out for 30%, linger at the peak for 30%, then return over
-        // the final 40%. Background cards keep travelling during the dwell.
-        const auto ease = [](float phase) { return 0.5F - 0.5F * std::cos(phase * std::numbers::pi_v<float>); };
-        const float pulse = t < 0.3F ? ease(t / 0.3F) : t <= 0.6F ? 1.F : 1.F - ease((t - 0.6F) / 0.4F);
+        // A continuous rounded crest, not a flat hold: linger near the top
+        // while still moving. Bias the peak earlier for a longer, gentler fall.
+        // Quintic easing also gives zero velocity/acceleration at both ends.
+        const float phase = t + 0.35F * t * (1.F - t);
+        const float eased = phase * phase * phase * (phase * (6.F * phase - 15.F) + 10.F);
+        const float crest = 2.F * eased - 1.F;
+        const float pulse = std::clamp(1.F - crest * crest * crest * crest, 0.F, 1.F);
         const float settle = 1.F - t;
         const float zoom = std::max((1.F - feedbackStartScale) * settle, feedbackMode == "zoom" ? feedbackAmount * pulse : 0.F);
         scale->setValueAndWarp(1.F - zoom);
